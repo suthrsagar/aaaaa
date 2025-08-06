@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bita Services</title>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: #f4f4f4;
+    }
+
+    header {
+      background: #1f2d3d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .logo img {
+      height: 60px;
+      width: 60px;
+      border-radius: 50%;
+    }
+
+    .search-bar {
+      flex: 1;
+      margin: 0 20px;
+      display: flex;
+      background: #fff;
+      border-radius: 50px;
+      overflow: hidden;
+    }
+
+    .search-bar input {
+      flex: 1;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 50px 0 0 50px;
+      outline: none;
+    }
+
+    .search-bar button {
+      background: #3a77ff;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 0 50px 50px 0;
+      cursor: pointer;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .sell-btn {
+      background: transparent;
+      color: #3a77ff;
+      border: 2px solid #3a77ff;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .sell-btn:hover {
+      background: #3a77ff;
+      color: #fff;
+    }
+
+    .user-initial {
+      background: #3a77ff;
+      color: white;
+      border-radius: 50%;
+      padding: 10px 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* Popup */
+    .modal {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      width: 220px;
+      display: none;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+
+    .modal a {
+      display: block;
+      padding: 12px 16px;
+      color: #333;
+      text-decoration: none;
+      border-bottom: 1px solid #eee;
+      transition: background 0.3s;
+    }
+
+    .modal a:hover {
+      background: #f5f5f5;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: -300px;
+      width: 280px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -5px 0 20px rgba(0, 0, 0, 0.2);
+      padding: 30px 20px;
+      transition: right 0.3s ease;
+      z-index: 999;
+      border-top-left-radius: 20px;
+      border-bottom-left-radius: 20px;
+    }
+
+    .sidebar.open {
+      right: 0;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+      font-size: 22px;
+      color: #1f2d3d;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 12px 10px;
+      margin-bottom: 10px;
+      color: #1f2d3d;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+
+    .sidebar a:hover {
+      background: #f0f0f0;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: none;
+      z-index: 998;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <img src="sagar.png" alt="Logo" />
+    </div>
+
+    <div class="search-bar">
+      <input type="text" placeholder="Find a room to rent" id="searchInput" />
+      <button onclick="handleSearch()">Search</button>
+    </div>
+
+    <div class="nav-right" id="navRight">
+      <!-- JavaScript will fill content -->
+    </div>
+  </header>
+
+  <!-- Modal -->
+  <div class="modal" id="userModal">
+    <a href="#">My Profile</a>
+    <a href="#">Settings</a>
+    <a href="#">Dashboard</a>
+    <a href="#" onclick="logoutUser()">Logout</a>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h2>User Menu</h2>
+    <div id="sidebarLinks"></div>
+  </div>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Appwrite Script -->
+  <script>
+    const { Client, Account } = Appwrite;
+
+    const client = new Client()
+      .setEndpoint("https://fra.cloud.appwrite.io/v1")
+      .setProject("68939ce700379164cd5a");
+
+    const account = new Account(client);
+
+    window.addEventListener("load", () => {
+      checkUserSession();
+    });
+
+    function handleSearch() {
+      const query = document.getElementById("searchInput").value;
+      alert("Searching: " + query);
+    }
+
+    async function checkUserSession() {
+      try {
+        const user = await account.get();
+        const email = user.email || "";
+        const firstLetter = email.charAt(0).toUpperCase();
+
+        // Header buttons
+        document.getElementById("navRight").innerHTML = `
+          <button class="sell-btn">+ Add</button>
+          <span class="user-initial" id="userInitial" title="${email}">${firstLetter}</span>
+        `;
+
+        // Sidebar content
+        document.getElementById("sidebarLinks").innerHTML = `
+          <a href="#">My Profile</a>
+          <a href="#">Dashboard</a>
+          <a href="#">Settings</a>
+          <a href="#" onclick="logoutUser()">Logout</a>
+        `;
+
+        document.getElementById("userInitial").addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleModal();
+        });
+
+        document.addEventListener("click", () => {
+          document.getElementById("userModal").style.display = "none";
+        });
+
+      } catch (err) {
+        // Header buttons for guest
+        document.getElementById("navRight").innerHTML = `
+          <button class="sell-btn">+ Add</button>
+          <button class="sell-btn" onclick="openSidebar()">Login</button>
+        `;
+
+        // Sidebar for guest
+        document.getElementById("sidebarLinks").innerHTML = `
+          <a href="login.html">Login</a>
+        `;
+      }
+    }
+
+    function toggleModal() {
+      const modal = document.getElementById("userModal");
+      modal.style.display = modal.style.display === "block" ? "none" : "block";
+    }
+
+    function openSidebar() {
+      document.getElementById("sidebar").classList.add("open");
+      document.getElementById("overlay").style.display = "block";
+    }
+
+    document.getElementById("overlay").addEventListener("click", () => {
+      document.getElementById("sidebar").classList.remove("open");
+      document.getElementById("overlay").style.display = "none";
+    });
+
+    async function logoutUser() {
+      try {
+        await account.deleteSession("current");
+        alert("Logged out successfully.");
+        window.location.href = "index.html";
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    }
+  </script>
+
+</body>
+
+</html>

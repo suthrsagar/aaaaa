@@ -1,0 +1,203 @@
+<!-- File: login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bita Auth</title>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background: linear-gradient(135deg, #7f5af0, #ff4d97);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .glass {
+      backdrop-filter: blur(20px);
+      background-color: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    input:focus {
+      border-color: #ec4899;
+      box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.3);
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+
+<div id="toast" class="toast"></div>
+
+<div class="w-full max-w-md p-8 rounded-2xl glass text-white">
+  <!-- Signup -->
+  <div id="signup-form" class="space-y-5">
+    <h2 class="text-3xl font-bold text-center">Sign Up</h2>
+    <input id="signup-name" type="text" placeholder="Full Name" class="input-field"/>
+    <input id="signup-email" type="email" placeholder="Email" class="input-field"/>
+    <input id="signup-password" type="password" placeholder="Password" class="input-field"/>
+    <button onclick="signUp()" class="btn-pink">Create Account</button>
+    <p class="text-center text-sm text-white/80">Already have an account?
+      <button onclick="switchToLogin()" class="text-pink-300 hover:underline">Login</button>
+    </p>
+  </div>
+
+  <!-- Login -->
+  <div id="login-form" class="space-y-5 hidden">
+    <h2 class="text-3xl font-bold text-center">Login</h2>
+    <input id="login-email" type="email" placeholder="Email" class="input-field"/>
+    <input id="login-password" type="password" placeholder="Password" class="input-field"/>
+    <button onclick="login()" class="btn-indigo">Login</button>
+    <p class="text-center text-sm text-white/80">Don't have an account?
+      <button onclick="switchToSignup()" class="text-indigo-300 hover:underline">Sign Up</button>
+    </p>
+  </div>
+
+  <!-- Logged In View -->
+  <div id="logout-form" class="space-y-5 hidden text-center">
+    <h2 class="text-2xl font-bold">You are already logged in</h2>
+    <button onclick="logout()" class="btn-red">Logout</button>
+    <button onclick="window.location.href='index.html'" class="btn-indigo">Back to Home</button>
+  </div>
+</div>
+
+<script>
+  const { Client, Account, ID } = Appwrite;
+  const client = new Client()
+    .setEndpoint("https://fra.cloud.appwrite.io/v1")
+    .setProject("68939ce700379164cd5a");
+
+  const account = new Account(client);
+  const toast = document.getElementById("toast");
+
+  function showToast(msg, error = false) {
+    toast.innerText = msg;
+    toast.style.background = error ? "#dc2626" : "#10b981";
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 3000);
+  }
+
+  function switchToLogin() {
+    document.getElementById("signup-form").classList.add("hidden");
+    document.getElementById("login-form").classList.remove("hidden");
+    document.getElementById("logout-form").classList.add("hidden");
+  }
+
+  function switchToSignup() {
+    document.getElementById("login-form").classList.add("hidden");
+    document.getElementById("signup-form").classList.remove("hidden");
+    document.getElementById("logout-form").classList.add("hidden");
+  }
+
+  async function signUp() {
+    const name = document.getElementById("signup-name").value;
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+
+    if (!name || !email || !password) return showToast("Please fill all fields.", true);
+
+    try {
+      await account.create(ID.unique(), email, password, name);
+      showToast("Account created! Please log in.");
+      switchToLogin();
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+
+  async function login() {
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    if (!email || !password) return showToast("Please fill all fields.", true);
+
+    try {
+      await account.createEmailSession(email, password);
+      showToast("Login successful!");
+      setTimeout(() => window.location.href = "index.html", 1500);
+    } catch (err) {
+      showToast("Login failed: " + err.message, true);
+    }
+  }
+
+  async function logout() {
+    try {
+      await account.deleteSession("current");
+      showToast("Logged out.");
+      setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+      showToast("Logout failed.", true);
+    }
+  }
+
+  (async () => {
+    try {
+      await account.get();
+      document.getElementById("signup-form").classList.add("hidden");
+      document.getElementById("login-form").classList.add("hidden");
+      document.getElementById("logout-form").classList.remove("hidden");
+    } catch {
+      switchToSignup();
+    }
+  })();
+</script>
+
+<style>
+  .input-field {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid white;
+    color: white;
+  }
+  .btn-pink {
+    width: 100%;
+    padding: 12px;
+    background: #ec4899;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .btn-pink:hover { background: #db2777; }
+  .btn-indigo {
+    width: 100%;
+    padding: 12px;
+    background: #6366f1;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .btn-indigo:hover { background: #4f46e5; }
+  .btn-red {
+    width: 100%;
+    padding: 12px;
+    background: #ef4444;
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .btn-red:hover { background: #dc2626; }
+</style>
+
+</body>
+</html>
